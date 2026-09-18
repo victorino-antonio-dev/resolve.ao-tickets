@@ -1,12 +1,12 @@
-# RESOLVE.AO — Sistema de Tickets (versão local/self-hosted)
+# RESOLVE.AO — Central de Pedidos
 
 Ferramenta web com:
 - **Pedido do cliente** — escolha de categoria/serviço, dados de contacto e handoff para WhatsApp com mensagem pré-preenchida.
 - **Painel interno** — quadro de tickets (Novo → Em atendimento → Agendado → Concluído), atribuição de técnico, valor estimado e botão para enviar a confirmação ao cliente por WhatsApp.
 - Atualização em tempo real entre janelas/dispositivos (Server-Sent Events).
-- Sem dependências de base de dados externa — guarda os tickets num ficheiro `data/tickets.json` local, fácil de trocar por uma base de dados a sério mais tarde (ver secção "Evoluir para produção").
+- Sem dependências de base de dados externa — guarda os tickets num ficheiro JSON local ou num Volume persistente do Railway.
 
-Esta é a versão independente da plataforma Claude — corre em qualquer servidor Node.js, incluindo o seu próprio computador.
+Aplicação Node.js/Express publicada em [resolve-ao-tickets-production.up.railway.app](https://resolve-ao-tickets-production.up.railway.app/).
 
 ## 1. Correr localmente (ambiente de testes)
 
@@ -45,23 +45,21 @@ API disponível:
 | POST   | `/api/tickets`    | Cria um novo ticket                 |
 | PATCH  | `/api/tickets/:id`| Atualiza um ticket existente        |
 | GET    | `/api/stream`     | Eventos em tempo real (SSE)         |
+| GET    | `/health`         | Verificação de saúde do serviço     |
 
-## 3. Hospedar no Render (recomendado)
+## 3. Deploy no Railway
 
-Este projeto já vem pronto para o Render, com um ficheiro `render.yaml` incluído (Render "Blueprint").
+O projeto está ligado ao GitHub e preparado para deploy automático no Railway através de `railway.json`.
 
 **Passo a passo:**
-1. Suba esta pasta para um repositório no GitHub (ver secção 4 abaixo se precisar de ajuda).
-2. Em [dashboard.render.com](https://dashboard.render.com), clique em **New +** → **Web Service**.
-3. Escolha **Build and deploy from a Git repository** e selecione o repositório.
-4. O Render deteta o `render.yaml` automaticamente (ou configure à mão: Environment = Node, Build Command = `npm install`, Start Command = `npm start`).
-5. Em **Environment**, confirme/ajuste a variável `BUSINESS_PHONE` (já vem pré-definida no `render.yaml`, mas pode editar no dashboard).
-6. Clique em **Create Web Service**. Acompanhe os logs até aparecer `RESOLVE.AO a correr em http://localhost:...`.
-7. O Render dá um URL público tipo `https://resolve-ao-tickets.onrender.com` — pronto a usar, já com HTTPS.
+1. No Railway, selecione **New Project → Deploy from GitHub repo**.
+2. Escolha `victorino-antonio-dev/resolve.ao-tickets` e mantenha `main` como branch de produção.
+3. Em **Variables**, defina `BUSINESS_PHONE=244931719199`. A variável `PORT` é fornecida automaticamente pelo Railway.
+4. Em **Settings → Networking**, mantenha o domínio público `resolve-ao-tickets-production.up.railway.app`.
+5. Para não perder tickets em reinícios ou novos deploys, adicione um **Volume** ao serviço e monte-o em `/data`. O servidor deteta automaticamente `RAILWAY_VOLUME_MOUNT_PATH`.
+6. Cada novo commit em `main` inicia um deploy automático. A rota `/health` é usada para confirmar que o serviço ficou pronto.
 
-⚠️ **Sobre persistência de dados:** o plano gratuito do Render usa disco efémero — `data/tickets.json` pode perder-se em reinícios ou redeploys. Para produção a sério:
-- Mude para um plano pago e ative um **disco persistente** (as linhas já preparadas, comentadas, estão no `render.yaml` — é só descomentar), ou
-- Peça para adaptar o `server.js` a usar uma base de dados real (Render tem Postgres gratuito por 90 dias) — ver Opção C abaixo.
+Sem Volume, o sistema continua funcional, mas o ficheiro de tickets fica no armazenamento efémero do contentor e pode ser perdido num redeploy.
 
 ### Outras opções de hospedagem
 
@@ -81,7 +79,7 @@ Este projeto já vem pronto para o Render, com um ficheiro `render.yaml` incluí
 ### Opção C — Evoluir para produção a sério
 O ficheiro `data/tickets.json` é ótimo para testar, mas não é seguro para vários acessos simultâneos em produção nem sobrevive bem a certos tipos de hospedagem. Quando estiver pronto para lançar a sério, substitua as funções `loadTickets`/`saveTickets` em `server.js` por uma base de dados real — por exemplo:
 - **SQLite** (`better-sqlite3`) — simples, ainda sem servidor de base de dados separado.
-- **PostgreSQL** (ex. via [Supabase](https://supabase.com) ou [Railway](https://railway.app)) — recomendado se vários membros da equipa forem usar o painel ao mesmo tempo.
+- **PostgreSQL** (ex. via [Supabase](https://supabase.com) ou [Railway](https://railway.com)) — recomendado se vários membros da equipa forem usar o painel ao mesmo tempo.
 
 A estrutura da API (`GET/POST/PATCH /api/tickets`) mantém-se igual — só a forma como os dados são guardados muda.
 
@@ -95,4 +93,4 @@ Para automatizar por completo (o sistema a enviar mensagens sozinho, sem clique 
 
 - **Categorias e serviços**: edite o array `CATEGORIES` em `public/index.html`.
 - **Cores e tipografia da marca**: variáveis CSS no topo de `public/index.html` (`:root { --laranja: ... }`), já alinhadas com o manifesto da marca RESOLVE.AO.
-- **Número de WhatsApp**: variável `BUSINESS_PHONE` no `.env`.
+- **Número de WhatsApp**: variável `BUSINESS_PHONE` no `.env` local ou nas Variables do Railway.

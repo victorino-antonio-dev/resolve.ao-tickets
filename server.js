@@ -11,10 +11,16 @@ const crypto = require("crypto");
 const app = express();
 const PORT = process.env.PORT || 3000;
 const BUSINESS_PHONE = process.env.BUSINESS_PHONE || "244931719199"; // formato wa.me, sem "+"
-const DATA_FILE = path.join(__dirname, "data", "tickets.json");
+const DATA_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH || process.env.DATA_DIR || path.join(__dirname, "data");
+const DATA_FILE = path.join(DATA_DIR, "tickets.json");
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
+
+/* ---------------- saúde da aplicação (Railway) ---------------- */
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok", service: "resolve-ao-tickets" });
+});
 
 /* ---------------- armazenamento simples em ficheiro ---------------- */
 function loadTickets() {
