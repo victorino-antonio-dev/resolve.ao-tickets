@@ -141,7 +141,7 @@
 
   /* ---- STAFF BOARD ---- */
   .board-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;}
-  .board{display:grid;grid-template-columns:repeat(4,minmax(230px,1fr));gap:14px;overflow-x:auto;}
+  .board{display:grid;grid-template-columns:repeat(5,minmax(210px,1fr));gap:14px;overflow-x:auto;}
   .col{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px;min-height:200px;}
   .col h3{font-size:12.5px;text-transform:uppercase;letter-spacing:0.05em;margin:2px 0 12px;color:var(--text-muted);display:flex;justify-content:space-between;}
   .col h3 em{background:var(--bg);border-radius:999px;padding:1px 8px;font-style:normal;font-weight:800;}
@@ -196,6 +196,7 @@
   <nav class="tabs">
     <button id="tab-cliente" class="active" onclick="switchView('cliente')">Pedir serviço</button>
     <button id="tab-painel" onclick="switchView('painel')">Painel de tickets</button>
+    <button id="tab-relatorio" onclick="switchView('relatorio')">Relatório</button>
   </nav>
 </header>
 
@@ -330,6 +331,29 @@
     <div class="note" id="storage-note-2"></div>
   </section>
 
+  <!-- ===================== RELATÓRIO VIEW ===================== -->
+  <section id="view-relatorio" class="view">
+    <div class="card">
+      <div class="eyebrow">Relatório interno</div>
+      <h2 style="margin:2px 0;">Relatório mensal de tickets</h2>
+      <p class="lead">Contagem de pedidos abertos, fechados, resolvidos e não aceites/não resolvidos no mês selecionado.</p>
+      <div class="row2" style="align-items:end;">
+        <div class="field">
+          <label>Mês</label>
+          <input type="month" id="report-month">
+        </div>
+        <div class="field" style="display:flex;gap:10px;align-items:end;">
+          <button class="btn btn-primary" onclick="loadReport()">Gerar relatório</button>
+          <button class="btn btn-ghost" onclick="downloadReportCsv()">Descarregar CSV</button>
+        </div>
+      </div>
+
+      <div class="report-grid" id="report-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:20px 0;"></div>
+
+      <div id="report-by-category"></div>
+    </div>
+  </section>
+
 </main>
 
 <footer>RESOLVE.AO • Peça. Nós resolvemos. • Contacto: +244 931 719 199</footer>
@@ -351,6 +375,7 @@
         <div class="chip" data-v="atendimento">Em atendimento</div>
         <div class="chip" data-v="agendado">Agendado</div>
         <div class="chip" data-v="concluido">Concluído</div>
+        <div class="chip" data-v="cancelado">Não aceite / não resolvido</div>
       </div>
     </div>
 
@@ -409,8 +434,8 @@ const CATEGORIES = [
 ];
 
 const URGENCY_CLASS = {"Hoje":"urg-hoje","Amanhã":"urg-amanha","Esta semana":"urg-semana","Sem pressa":"urg-sem"};
-const STATUS_LABEL = {novo:"Novo",atendimento:"Em atendimento",agendado:"Agendado",concluido:"Concluído"};
-const STATUS_ORDER = ["novo","atendimento","agendado","concluido"];
+const STATUS_LABEL = {novo:"Novo",atendimento:"Em atendimento",agendado:"Agendado",concluido:"Concluído",cancelado:"Não aceite / não resolvido"};
+const STATUS_ORDER = ["novo","atendimento","agendado","concluido","cancelado"];
 
 /* =================== DATA LAYER (API própria + SSE em tempo real) =================== */
 let allTickets = [];
@@ -487,8 +512,69 @@ async function updateTicket(id, patch){
 function switchView(name){
   document.getElementById("view-cliente").classList.toggle("active", name==="cliente");
   document.getElementById("view-painel").classList.toggle("active", name==="painel");
+  document.getElementById("view-relatorio").classList.toggle("active", name==="relatorio");
   document.getElementById("tab-cliente").classList.toggle("active", name==="cliente");
   document.getElementById("tab-painel").classList.toggle("active", name==="painel");
+  document.getElementById("tab-relatorio").classList.toggle("active", name==="relatorio");
+  if(name==="relatorio"){
+    const monthInput = document.getElementById("report-month");
+    if(!monthInput.value){
+      const now = new Date();
+      monthInput.value = now.getFullYear() + "-" + String(now.getMonth()+1).padStart(2,"0");
+    }
+    loadReport();
+  }
+}
+
+/* =================== RELATÓRIO MENSAL =================== */
+function currentReportYearMonth(){
+  const val = document.getElementById("report-month").value; // "YYYY-MM"
+  if(!val) {
+    const now = new Date();
+    return {year: now.getFullYear(), month: now.getMonth()+1};
+  }
+  const [y,m] = val.split("-").map(Number);
+  return {year:y, month:m};
+}
+
+async function loadReport(){
+  const {year, month} = currentReportYearMonth();
+  const grid = document.getElementById("report-grid");
+  grid.innerHTML = `<div class="empty-col">A carregar...</div>`;
+  try{
+    const r = await fetch(`/api/report?year=${year}&month=${month}`).then(res=>res.json());
+    const cards = [
+      {label:"Tickets abertos", value:r.abertos, hint:"Criados neste mês"},
+      {label:"Tickets fechados", value:r.fechados, hint:"Concluídos ou não aceites, fechados neste mês"},
+      {label:"Resolvidos", value:r.resolvidos, hint:"Fechados com sucesso"},
+      {label:"Não aceites / não resolvidos", value:r.naoAceitesOuNaoResolvidos, hint:"Fechados sem sucesso"},
+    ];
+    grid.innerHTML = cards.map(c=>`
+      <div class="tcard" style="cursor:default;">
+        <div class="tid">${c.hint}</div>
+        <div style="font-size:28px;font-weight:800;margin:6px 0 2px;">${c.value}</div>
+        <div class="tcli">${c.label}</div>
+      </div>
+    `).join("");
+
+    const catEntries = Object.entries(r.porCategoria || {});
+    const catBox = document.getElementById("report-by-category");
+    if(catEntries.length === 0){
+      catBox.innerHTML = `<p class="lead">Sem pedidos abertos neste mês.</p>`;
+    } else {
+      catBox.innerHTML = `<h2 style="font-size:16px;margin:18px 0 10px;">Pedidos abertos por categoria</h2>` +
+        `<div class="summary-box">` +
+        catEntries.map(([cat,n])=>`<div class="row"><b>${cat}</b><span>${n}</span></div>`).join("") +
+        `</div>`;
+    }
+  }catch(e){
+    grid.innerHTML = `<div class="empty-col">Não foi possível carregar o relatório.</div>`;
+  }
+}
+
+function downloadReportCsv(){
+  const {year, month} = currentReportYearMonth();
+  window.open(`/api/report.csv?year=${year}&month=${month}`, "_blank");
 }
 
 /* =================== CLIENT FORM LOGIC =================== */

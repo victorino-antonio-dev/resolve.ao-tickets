@@ -75,6 +75,8 @@ app.post("/api/tickets", (req, res) => {
     ticketId,
     status: "novo",
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    closedAt: "",
     categoria: body.categoria || "",
     categoriaKey: body.categoriaKey || "",
     servico: body.servico || "",
@@ -98,14 +100,90 @@ app.post("/api/tickets", (req, res) => {
   res.status(201).json(ticket);
 });
 
+const CLOSED_STATUSES = ["concluido", "cancelado"];
+
 app.patch("/api/tickets/:id", (req, res) => {
   const { id } = req.params;
   const idx = tickets.findIndex((t) => t.id === id);
   if (idx === -1) return res.status(404).json({ error: "Ticket não encontrado" });
-  tickets[idx] = { ...tickets[idx], ...req.body };
+
+  const before = tickets[idx];
+  const patch = { ...req.body, updatedAt: new Date().toISOString() };
+
+  // Regista quando o ticket entrou num estado final (para o relatório mensal),
+  // e limpa essa marca se o ticket for reaberto.
+  if (patch.status && CLOSED_STATUSES.includes(patch.status) && !CLOSED_STATUSES.includes(before.status)) {
+    patch.closedAt = new Date().toISOString();
+  } else if (patch.status && !CLOSED_STATUSES.includes(patch.status) && CLOSED_STATUSES.includes(before.status)) {
+    patch.closedAt = "";
+  }
+
+  tickets[idx] = { ...before, ...patch };
   saveTickets(tickets);
   broadcastTickets();
   res.json(tickets[idx]);
+});
+
+/* ---------------- relatório mensal ---------------- */
+function computeReport(year, month) {
+  // month: 1-12
+  const start = new Date(Date.UTC(year, month - 1, 1));
+  const end = new Date(Date.UTC(year, month, 1)); // primeiro dia do mês seguinte
+
+  const inMonth = (isoStr) => {
+    if (!isoStr) return false;
+    const d = new Date(isoStr);
+    return d >= start && d < end;
+  };
+
+  const abertosNoMes = tickets.filter((t) => inMonth(t.createdAt));
+  const fechadosNoMes = tickets.filter((t) => inMonth(t.closedAt));
+  const resolvidosNoMes = fechadosNoMes.filter((t) => t.status === "concluido");
+  const naoAceitesNoMes = fechadosNoMes.filter((t) => t.status === "cancelado");
+
+  const porCategoria = {};
+  abertosNoMes.forEach((t) => {
+    const cat = t.categoria || "Sem categoria";
+    porCategoria[cat] = (porCategoria[cat] || 0) + 1;
+  });
+
+  return {
+    ano: year,
+    mes: month,
+    abertos: abertosNoMes.length,
+    fechados: fechadosNoMes.length,
+    resolvidos: resolvidosNoMes.length,
+    naoAceitesOuNaoResolvidos: naoAceitesNoMes.length,
+    porCategoria,
+    geradoEm: new Date().toISOString(),
+  };
+}
+
+app.get("/api/report", (req, res) => {
+  const year = parseInt(req.query.year, 10) || new Date().getFullYear();
+  const month = parseInt(req.query.month, 10) || new Date().getMonth() + 1;
+  res.json(computeReport(year, month));
+});
+
+app.get("/api/report.csv", (req, res) => {
+  const year = parseInt(req.query.year, 10) || new Date().getFullYear();
+  const month = parseInt(req.query.month, 10) || new Date().getMonth() + 1;
+  const r = computeReport(year, month);
+  const lines = [
+    "métrica,valor",
+    `ano,${r.ano}`,
+    `mes,${r.mes}`,
+    `abertos,${r.abertos}`,
+    `fechados,${r.fechados}`,
+    `resolvidos,${r.resolvidos}`,
+    `nao_aceites_ou_nao_resolvidos,${r.naoAceitesOuNaoResolvidos}`,
+    "",
+    "categoria,tickets_abertos",
+    ...Object.entries(r.porCategoria).map(([cat, n]) => `${cat},${n}`),
+  ];
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="relatorio-resolve-ao-${r.ano}-${String(r.mes).padStart(2, "0")}.csv"`);
+  res.send(lines.join("\n"));
 });
 
 app.listen(PORT, () => {
