@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="pt-AO">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RESOLVE.AO — Central de Pedidos</title>
+<style>
+  :root{
+    --laranja:#E84A16;
+    --laranja-escuro:#c93e11;
+    --preto:#0D0C0B;
+    --castanho:#5A2D1F;
+    --creme:#F5F0E8;
+    --branco:#FFFFFF;
+    --bg:var(--creme);
+    --surface:var(--branco);
+    --text:var(--preto);
+    --text-muted:var(--castanho);
+    --border:#e3dccd;
+    --shadow:0 1px 3px rgba(13,12,11,0.08);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#151210;
+      --surface:#1f1b17;
+      --text:#F5F0E8;
+      --text-muted:#d8b9a4;
+      --border:#332a22;
+      --shadow:0 1px 3px rgba(0,0,0,0.4);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#151210;
+    --surface:#1f1b17;
+    --text:#F5F0E8;
+    --text-muted:#d8b9a4;
+    --border:#332a22;
+    --shadow:0 1px 3px rgba(0,0,0,0.4);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:"Helvetica Neue",Arial,"Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  header.topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:14px 20px;
+    background:var(--surface);
+    border-bottom:1px solid var(--border);
+    position:sticky;
+    top:0;
+    z-index:20;
+    flex-wrap:wrap;
+    gap:12px;
+  }
+  .brand{display:flex;align-items:center;gap:10px;}
+  .brand img{height:34px;width:auto;display:block;}
+  .brand .wordmark{font-weight:800;font-size:19px;letter-spacing:-0.02em;}
+  .brand .wordmark span{color:var(--laranja);}
+  .brand .tag{font-size:11px;color:var(--text-muted);margin-left:2px;}
+  nav.tabs{display:flex;gap:6px;background:var(--bg);padding:4px;border-radius:10px;border:1px solid var(--border);}
+  nav.tabs button{
+    border:none;background:transparent;padding:8px 16px;border-radius:8px;
+    font-weight:700;font-size:13px;color:var(--text-muted);cursor:pointer;
+  }
+  nav.tabs button.active{background:var(--laranja);color:#fff;}
+  main{max-width:1100px;margin:0 auto;padding:20px;}
+  .view{display:none;}
+  .view.active{display:block;}
+
+  /* ---- CLIENT FORM ---- */
+  .card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:26px;
+    box-shadow:var(--shadow);
+  }
+  .eyebrow{color:var(--laranja);font-weight:800;font-size:12px;letter-spacing:0.06em;text-transform:uppercase;}
+  h1{font-size:28px;margin:6px 0 4px;letter-spacing:-0.02em;}
+  h2{font-size:20px;margin:0 0 4px;}
+  p.lead{color:var(--text-muted);margin:0 0 22px;font-size:14.5px;}
+  .steps-dots{display:flex;gap:6px;margin-bottom:20px;}
+  .steps-dots span{height:5px;flex:1;background:var(--border);border-radius:3px;overflow:hidden;}
+  .steps-dots span i{display:block;height:100%;width:0%;background:var(--laranja);transition:width .25s;}
+  .steps-dots span.done i, .steps-dots span.active i{width:100%;}
+
+  .cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;}
+  .cat-card{
+    border:2px solid var(--border);border-radius:14px;padding:18px 14px;text-align:center;
+    cursor:pointer;background:var(--bg);transition:.15s;
+  }
+  .cat-card:hover{border-color:var(--laranja);}
+  .cat-card.selected{border-color:var(--laranja);background:rgba(232,74,22,0.08);}
+  .cat-card .ic{font-size:26px;margin-bottom:8px;}
+  .cat-card .nm{font-weight:800;font-size:13.5px;}
+  .cat-card .ds{font-size:11.5px;color:var(--text-muted);margin-top:3px;}
+
+  .field{margin-bottom:16px;}
+  .field label{display:block;font-weight:700;font-size:13px;margin-bottom:6px;}
+  .field .hint{font-weight:400;color:var(--text-muted);font-size:11.5px;}
+  select,input[type=text],input[type=tel],input[type=date],input[type=time],textarea{
+    width:100%;padding:11px 12px;border:1.5px solid var(--border);border-radius:10px;
+    font-size:14.5px;background:var(--surface);color:var(--text);font-family:inherit;
+  }
+  select:focus,input:focus,textarea:focus{outline:none;border-color:var(--laranja);}
+  textarea{min-height:80px;resize:vertical;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .chip-row{display:flex;flex-wrap:wrap;gap:8px;}
+  .chip{
+    border:1.5px solid var(--border);border-radius:999px;padding:7px 14px;font-size:12.5px;
+    font-weight:700;cursor:pointer;background:var(--bg);color:var(--text);
+  }
+  .chip.selected{background:var(--laranja);border-color:var(--laranja);color:#fff;}
+
+  .btn{
+    border:none;border-radius:10px;padding:12px 20px;font-weight:800;font-size:14px;cursor:pointer;
+  }
+  .btn-primary{background:var(--laranja);color:#fff;}
+  .btn-primary:hover{background:var(--laranja-escuro);}
+  .btn-primary:disabled{opacity:.45;cursor:not-allowed;}
+  .btn-ghost{background:transparent;color:var(--text);border:1.5px solid var(--border);}
+  .btn-wa{background:#25D366;color:#08331b;}
+  .actions{display:flex;justify-content:space-between;margin-top:22px;gap:10px;}
+
+  .summary-box{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:18px;}
+  .summary-box .row{display:flex;justify-content:space-between;padding:6px 0;font-size:13.5px;border-bottom:1px solid var(--border);}
+  .summary-box .row:last-child{border-bottom:none;}
+  .summary-box .row b{color:var(--text-muted);font-weight:700;}
+
+  .success{text-align:center;padding:10px 0;}
+  .success .ticket-id{
+    display:inline-block;background:var(--preto);color:#fff;font-weight:800;
+    padding:10px 22px;border-radius:10px;font-size:18px;letter-spacing:0.03em;margin:14px 0;
+  }
+
+  /* ---- STAFF BOARD ---- */
+  .board-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;}
+  .board{display:grid;grid-template-columns:repeat(4,minmax(230px,1fr));gap:14px;overflow-x:auto;}
+  .col{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px;min-height:200px;}
+  .col h3{font-size:12.5px;text-transform:uppercase;letter-spacing:0.05em;margin:2px 0 12px;color:var(--text-muted);display:flex;justify-content:space-between;}
+  .col h3 em{background:var(--bg);border-radius:999px;padding:1px 8px;font-style:normal;font-weight:800;}
+  .tcard{
+    background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:11px;margin-bottom:10px;
+    cursor:pointer;
+  }
+  .tcard:hover{border-color:var(--laranja);}
+  .tcard .tid{font-size:11px;color:var(--text-muted);font-weight:700;}
+  .tcard .tsvc{font-weight:800;font-size:13.5px;margin:3px 0;}
+  .tcard .tcli{font-size:12px;color:var(--text-muted);}
+  .tcard .turg{display:inline-block;margin-top:6px;font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:999px;}
+  .urg-hoje{background:#fde3d8;color:#a8330d;}
+  .urg-amanha{background:#fdeccb;color:#8a5a06;}
+  .urg-semana{background:#e4ede1;color:#33562a;}
+  .urg-sem{background:#eee;color:#666;}
+  .empty-col{font-size:12px;color:var(--text-muted);text-align:center;padding:20px 0;}
+
+  .modal-bg{
+    display:none;position:fixed;inset:0;background:rgba(13,12,11,0.55);z-index:50;
+    align-items:center;justify-content:center;padding:16px;
+  }
+  .modal-bg.open{display:flex;}
+  .modal{
+    background:var(--surface);border-radius:16px;max-width:520px;width:100%;
+    max-height:88vh;overflow-y:auto;padding:24px;
+  }
+  .modal h2{margin-bottom:2px;}
+  .modal .close{float:right;background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);}
+  .divider{border:none;border-top:1px solid var(--border);margin:16px 0;}
+  .status-select-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
+
+  footer{max-width:1100px;margin:30px auto 40px;padding:0 20px;color:var(--text-muted);font-size:12px;text-align:center;}
+  .note{background:rgba(232,74,22,0.08);border:1px solid rgba(232,74,22,0.25);border-radius:10px;padding:10px 14px;font-size:12px;color:var(--text-muted);margin-top:14px;}
+
+  @media (max-width:760px){
+    .board{grid-template-columns:1fr;}
+    .row2{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJkAAACgCAYAAAAfKc7fAAAnwElEQVR4nO2de7RlR13nP9+qfe7thAQSHomYQEAQMSIgAUFlzU0gj06CIjAXXCIODx0Qx2HpgIyK0/Yooqjja43I+EQYhqF1sVgm3Z10JOkBGVCiPCSijuOAgJiIeZB09z1nV/3mj3rsOqc7SDp97z0d9jfpe+/ZZ599atf+1u9Vv/oVjBgxYsSIESNGjBgxYsSIESNGjBgxYsSIESNGjBgxYsSIESNGjBgxYsSIESNGjBgxYsSIESNGjBgxYsSIESNGjBgxYsSIESNGjBgxYsSIESNGjDhJoO1uwDLAQOxC3IS4uemTs7CjTl58/3yM3Zg4xrkjvjxhINuFszU6W8efsOs217Rx8M7hy6IzDMQ6jpuRDtIvvn/HTh5yuufhfc95Zpwj4ysNHizTaSYmTsigN7Nejs+b43NOfNYCn+7E33GYz+ggR+a+cxeOG3AcJAri1t3t8uE+TbLyoFti2Tp+eoiv9ZGnCD3VIk82s0c4eJDzDD1igAm0oAXVHIvQR44IfVayj1nkz8zxga7jz3QV/zTXjpsQe4hfjmr1PkkyW8dzPqbdSYJ8ap1THvoFvhn4NkwXC77Gd1lVRgMTIVokSRwzEpeoL8h6VmYy1ddIiM4LcFT6hMg/Id4Punrq4jWn7uWTc237MiPbfYpkiw9w43K+vjNeZOg53tmjERAhBEWDoCSRHJLAZJbYo6ZXEscEAouJF+l0I5PRLGKgiGFgrnN0+HSRGLjD4FqT/d6nD3PgkVmtfjmR7T5BMtuFYzcU22d2OZc49AMWbaf3TIiiN4IcEcNhJpOk8nwzaaD+Ir3bkAqbo0P5U+TzYu1MAxkiGuDFRNm9CJG/QnqzV/xdXc2tkMimPYRN65wlwElNsmLQl4c028kVDl7tpIuQ0QdMqAecCSdRiUORWghT+g1gZkkbWu6a5r36rQySDAYbLX2OTNr8VjoSLaKuw+NFDPy9oV/5/F3x188+yJ0lhFLU+30NJy3JWgkwvZwnO7Tby64ACEEBiMj8/BO3Si7qT5X/0zGzQTpV9al6fjpimeGZpkrv2oLiS9+sRjwSJaIXEzoRpvx1ML1h9Zr4uwC2Rncs7/dkx0lHslZ62U7u30s/rsirvLNJCPQ4gDb+VUhV6DGQrNy+8g/Lkq1oxiKZtNBLVk8oNMtXtErPfN1EbKPp6Hx5oeCxCU7EyB/1Zj+0up+P3hel2klFMss+nMBmV3ClQ//FGY/pZxYFwRwdWiDFIMfSNSINzYoIa85oOThHyUa9WpZPWcRpnkYDCRlsu0Jnm5eaUaboPZMYOGTo9f6a+AaB3ZdstZOGZKXTr1+je/oOfqrzei3RCIGpQYey08e81EjcKKqyvSCYBuJgVq18y++nSyRR1irYBZoOhwqjM8ksXY/h00XSNV6sgRk9pq6boBB4zwz7t6fs52/vK+rzpCBZ6ey7nsE5qyu81Xsu6nt6Ikg4c/U5zkkiNQwYYl8LXqKJRKvB7gIgmlWx46y5fhvfyBKqBmiVuar80irnqiLNnx/suEpCw9T7CSux5x9jby+dXMfe+0KoY+lJVgl2Kd+4Kt7pPef1vaZAlxWoijeY7PrhWQwGeyaDa4zw4iFaY6BnElQvMZoN8jF/pvZYlmRWVKA1LKjKMQfSin1nzF2tiLJmmsGM0BkdEgH9ULc//uLJTrSlJlkh2Owynu2ktzk4LQSbmmNSBVZrVtlwbPAm859DEIsasi/RjCLNpKo1U9RtkWQ0MbWBGPX8hV+WXdCqJK0q50E7k7V5uaGkPqPA/Iq6vueNk/322tYePRF9u5Vw292Au0Mh2MYlvNiJdxG5Xwg2M8dEcyqnIVZr9C/YYJZPkLXSQxAxYg3FlrPSOe4oK6/5svlnLTOTmanKRKvnWzsAopklVZy8h3IPbXMdziQXZ0y7jh+eXaa3CCK7kC25YDgWlrLBlWDP4LtWJrw1RAVkhvC0xKKECaANUtmxSNBORibXMJ1ZCOaGU8qVzUiTRUCas2wJmmNli9KvDd5WP6AhaiKcUa+XT7WBmHNSNzLzE1b6mX5rcq19z8moOpeOZIVghy7m+aued2CEiCRng9StJKmfOkp5tSGHdLx9+FYuQrWm1DzzKtfKj8FDLOcfw79sjs1/77w3KtrhUJvT3IU0P2BkNvOdVvoZb55ca6+wNToOEk4Woi2VurR1vA7SH76Mi1c73oYRTQwEk4a4V8sqS6QraimbV41oar3HRJG5x1gkYWhVp9J/otpr6fAQ8xq8SqvXnlO35byjVGdz3pzjmhpfVWc+18QkzGzaTXj57FL9pA7Ss3biEi43G0sjyWwXTruJRy7lsZ14v+CMiIJkqTOrpspksQXJYEaJh0nzHl8JoKYPMthv814dREXJUpBVmNNAOqvWk0Shl9oIWqNCm69pKNmo1YKGgI3jalBtx/Q3mYEWvNdkOrXvXb2O3zxZ4mhLQTIDsQt9/oOcdobpf3vH+X1vM5y6IYY1SJNBjTWhg/b5tZGGRWlWJrZLkNSIoJij+J13Ep5hYio2H4eaf5bDaD1GRHKG+UEFp0YkR7RhXU1FWyBb8YYH3zNfJvulVRDLHEQEwewZK9fw3pNhZmA5SJZH5PQS3jZZ4YX9lClKXmRx5gY7RU1e11G+37ySUpM/0TqIEUMWZeCdUvqiGSFohtnnDH3WdXwW45YY7ZATAeRjtAdJOhs4F7OHea/TS7Ji6ImGBQyHcJXphSH578FHaQfO0a5KPVom7FWmtAid8MH4ez+xC7iKf87nL+1cZ7fdDcgjsd+4mJdMJnphmNlUeQ6yqMG5VJuWRc2hQQ5YNtMay6hE4ZPZFp2jcx0OE6HnM4r2HoPrvLc/ufkLfPrsg3bnMVpaf9suHB/iob3Z17ugiwwukfgG7+UIRm/0SlENtziMB2chq/X8+mjpphqFye4tOEPgQ2TmOz18NuXNK/C87HEuLbZVklkOMN5+EV912go3yjgtAs4le6ca8o04GqYYM5Fad9+Gqeh0jqX5yfSUgqTOdxB6jshxVZS9rdvBDdrD7QvtqgtP5hqcl8AdI0NC0yt5itC6i7zAOXsYEXpTL+EoQTFa1nC0CNbiAZhLNxrWFphF+m6ilRD1sm5//O1lVpvbS7LcMRvPZP/Kii5LdhjdnBkF85kLLPxd7Jm5nBxrpFpy/7oJPgQ2JPsNB/9VV/GJth3cjLiQ+KWsobTiOqyjxRVQt13JmacZLwL9oO94RJxhhgUDX1zjo5yAMotQbbPmTod5+9ohBigSsx69fSPa4069jn9Y1hShbSNZIVh/OS/w4h39jJmEx0lmluaWs7Iphn19FnNkaokGbZYrEDx0OEC8G7NdupqPlO8HOFGBzcWVUfZszogzXmPwH7y02vfMcNbJ5hMiyU2fG0kwzMOWU1RstHTf2bbrO6/JrLe3rhzgu5dVmm0LyaokuIRTguNjEo+Iab7Ozc0fHkN7tOGB8mNOSZbc/KhZt8IKwf4xGD/U7ePtwFErmTbl3tZSvA/AruQJ0fRLznFhP7Me5MhTpdbeFAvSrJ3bPPYfmaiEzuNn0a+tXNMvpbe5PcHYdZwgzsQPeMcjY6SXcIOeGkZ1kUrKsa3az5TnYPP9DxCZdRNWQrCDh+Gp3T7ebut425UyajdTpQhMB+kNZGt0upqPuKfYM2O0N3YTOoEJi0cPoCGAp3y/NSLX9EE78yCRnqBDIrzRduE4/95L5RONLZdkZazyLB7Ub/AJB2eak1mO6s8HToWs+GiDDCuZqPNmfh7YUX03YdIHe0t3M9+rG5ltZ9CynWvsr+R7Jb3ZZsUBNodpSE/KcbSah9bca71e8ZutNRUI3tNtTHnujgO8a9mk2dZLsiTFbLbBK7qOB0UIJnPF67I5A9hyv8/NJWOFYFVdkoOrmWA9vzzZx4u5kd52za8g32qUh21rdN3V/EY0e746ohyy/H+6vzyOmpVPQ54bFLe0HVTzzqjMo1cDLJs021JJVuhz+6WceT/TTU52lqFoylJMlVg1tDgQaZBiVWG0+fNG7ztN+mBvmuzjlcuYrWAXMNGNzI7s5DkTpz0pFGHCaXBxFkIZx4wVNrdUluDJiE74IHvmZB/vWSZptrWSbA0vsNMc39FN7Oxg9Fai40CjTBOkYezmhzCokbqgA1DvJ5qE3v5gWQkGoBuZ2QVMduznXWb2CtfRSQrVPiha00pAeT6gZiXQXGJt1YMCZFEyFPSqrbynLwVbL8nW8P2KPtR19vg+EEgzhcMUUXbnrfkQKuGLEv1Kb+SQRuicumj2EdfzLRzgcL6xpYsXFRSJFq7QLznHq/oZMznrmB84DEG1ZjU7rZ8weEAGOANM076zx+/Yx1+XpIOtvr9FbJkks/UkxWan8DTveUIIRGUplmI+ye/CinFbP0lVI3MEU86CkYJxaGZ8pw5wF+tomQkGwI30to53d9mrQ+BPu84mZoQh2FpCGG1crEizDC0IfcBE7ye26nt9JwA3LEcq19Y1Ik/R2Izn5cnuZC+oSaLBhlTloShFQzxDSZdYSoMg+hV8lL1ux35usjW6ZbFDvhhqJOYgfTD7nmg64pLsjcn2r3ozZTBV0TWPYxx26Qo8tyQ22hZrq2NhS0hmpKkXW2fFweWZBq54jqW35vqrGMJAWUEEOV6ZHlHoPL6fcuNkL79s63gOLj/BCrSHYGt0q/v5KNF+zk3ozJqyLVAHH2RJX/qq/iudUU90fbToZI+brXCBwFjffmm2NQ3INzq7gwuc12P6SJrLqx2lux9vonG2co5WcTmdBO4/FfW4bIb+v4iDBNuFc/Dzfc+nnVNnlgK1ZZapTplBnREYbDZls23utoPrJOfZCXDUJP82YGtIlm9UkZ2uQ7hsM9VZlWLdtx9S8SEbOyQbYbLgJ3QhcP1kf9hbIvlbci8nEALjBpz2c4eZ3ugmEqZY4n71PDGX959Q4mbzHFJOOjPjEoBlkO5bQ7LhRtcwQw61S4NK3jvQEM0o+fjDcSEnDDkMzNnPAnDT9o/W40a2mybEt/Sz+NnO0RGJKo5OG3GtmcFZggWshDuqlAcXU28/4a4rOSe7ENuqMjf9y61EH57Fg0GPH753iNjPh67TsXaE1jm8NEJjtyIfjI91p3KdgU5GKVYgMNbw2s8dGG9nguSI7brNinaFSWMbDFG0uvp91jmdttJzAQDr2zsIN5/hxR7b4PzOc2YIg8djrS1WA0BlRFo11ebddot5OdIe7SGcTKt27hZnZRNevDMGjLzCoJj0bZWgYooJwBePqEneVE7wwHDwjcC222WbT7J8g07u63ApeDoEW0vPNRHXjFad1hmXdLqPU4K3+IcAe461ocNJhiKJJ4f58xjsY15yROJRHjcwHy8rIf+ymMaKcnQgQsia48LtjRtuWY5/MHtM2UWh5q0azNWryH/MFzBJi62z3RG9zIfIX95wiL8AeMEmq0oD3bCGvxBS+nWRCmdhJ3TqKueghcvZh+PxShLfFePe2mFZJH6JK3KUc57km+NRto7X7u01JzZfkuVRJLNHASmrIq+LLGsliwVWwj81jYU6H1C0REwCzz54UYq7+c0SYwYqsxQXHaTXQXrtIaj9m1Ss7oR8YZbIEd6HgUk59amGwzLLhjtu9cCc6Zbmp5D4Cr7AA+uxbcKmSzLtJhqol85LB+ZmjFLfuDaDimrkJzIaZdQWlRqwG4FNszXqnN8egn0rZ9NzYR94khkPkZhK/N/o+cDkKbxPu4vEuZcVd3J6Thf5iyCOOGw15n0DND/qamxs+LJqudUDfcQED5h2nA3cwi7E7u0xLTaVZMWz5FmcopmdUYZT7TGhtlAc0DgCxbod6oUppvTFiecvgWNvsHVv25zVy22X8sDTPa+LPS9yngd3ZTOIrKp8hPhBPtxfbj+jffzPufs9HmQC/I34h0fKPuPFoywSDHmTCSdoYmWDU5BezUUU06/oPT5akmTbGebZmvjJhNOA081IicexSrB597HthhIeyw821y50IWqG49PACU/OK3Of04t58umeDzjPDyrw4DBjFoKmITDte6aht2mI1jvsid7rHeEKvc3W2AHHr5ZKPOsx+9mQ6VOoDMYvZnQNh+fSgkr0VmCRs4+nPScSm00yARw5xKkYqzFS+uyoKM8QaLTqSc4XHgGf8o6/wDStmj6R4r+uYn8m3+Q7XefQV4cNNoKIOHVAZ0Yn0ZljYmkVdx9mNnUdL4yn6H/sWcexjjtu+2e9OtI3py6StXZp7bZq01KCiLmPqi4dWBc5DdjWMMbmkmxX+rWjY2Koq27lvJU/eJbtMdogo2WrJHGWlfkd2e4tKsF28hTXcbXMHtD3NjNppUxNWDLFhVc6lP55kyZhgyNuwrc/5wv8hPYQjntSuhBBdnvyqm3e+irzvI2Am09vbK2yNEpFkrDbia1Rl4EJmDcHKt+Yba7kbDY1LyCNyJgdqZp9UDtwg9uZnaimVYJdzpOdtN/BmSGmNaBy+TtzkRVMNWt1kC0GMIkzemd69eFLeKT2pInv422Ti9xFFVCNBBtanX8OkVkV06P0Vf6YEyvH244ThS0h2QYAomSyF9nQog0yDraItSvCypmO009Mu2tFx8t4knfa67EHhsgMp87UzDcUVZ5jeqV+QrPGWGZE19mOFc9LgXuVMBgtEcPI8+I1LqYinea+uAzUxkDL0FJkb26NJOuZgfWt/SVpIFsOBA0rdlTt1+q553MlVm/z9350FoLdeRlP6hz7XOQhITCTzxtOOGPI1WoINX+VdlCIKDPjYuD4sh+Ktyw1njgMQ29xYA7tUDRL9W9zzaA8OJ3c4XvcjhOMzSVZNsxXPXdibCjaYjgniXxl0V/fKQZHGrl5RU4a1Gb3W+m5371pViGYXcnjTnHa64yz+pDqcFglv6o8lWtVO9kmJ0u1RAczXL6Zh9lO7l8iffeoYdlbljijiqBm0JWX9T7av5svkzWlNixO71EbNgFbI8l2cBh0OIWalD3HYUqk2PrDRHB6km1NEsMUTVFwetdnt3zXPfeYqoq8nK+P6BonOztEZogutaMxpMteSXOrhwb9PfgtSYXFCCbOwHFm/rp71L666MPs7PxVlV1tXsqcdB/s2VT5sQ39ROiN24BNiSl+qdgSkt1wG3eC3YZIHlNsYxNUiQVQNiwdXPEmkGYE54T3PDpd+J61v0qwnZzfwTUu2lf2QUMlodaJa1apWQQ1ezIVAuYGMyzdM8B6pvfcMSmCyK7kTDMenmx3uTzcKEH/6gdVrttCO3Jo0XAEwzk+d0/bcqKxqSQrKuOitIL7c1ktDmZp7o1k85TuXFAyakdxsnoV+IZ72pZS9PjITs6P0rXOeGgfNEN3P+sxvx1O8TDTK6gVEFVmwFyaxfxHvopbytd+yQ0sKVHGY5zTQ2JavaS5eOHdtbOGOfJATWXZXG/aCOS2bOOq8k2XZDeUfC+nT+I0t153GHbpIRbFcCx3PY9ehxlBPBWALzGFpUTy7VIeO3G6xsE5feAogg359MrCNbdITa3XUpqqBkSrBIt4GY4P6b8xK5PrX3JH3Zw3gohc4DxCxXGYM2EX2prNj3qj1HZ5J+G4ZUfIkmyb5i1hC0h2Yf5t0l+n5zefjGjtg80ueTvVPFdhELkYMaEn33kZD9Vu4q5/4R6KBLNn8djY6YAzzg3ZyKem9+VzKXZODgvYIEOGJ6RhFVGVavkmhDrH246zo3LakC7DAFeCvmRPu8jzItOLzVrdk8FBSGQH8Skd4C4bHPVtwebbZGcVjyl+PGscN9chC3GwdHK1egcHISWZKRp913H6DvEMA/3E2t3fQ6kHYZfy6Bi038G5fbAZpJ1NqvHcqqOySt0Mq9F+qG3OEleRvM2NTLLed0z6Ge/lFK417tnCFgNpN/ELz+Bsma3FlK7ok+Qc+in1SsuVhc4bQi2WB1CqJrnN2cObT7JsC/Q9HwmBI87w5FkiFXsrGx6D7ZWVU3Uvh8Iqw1PX8wV2dyqzEOzwlXxV9LrWOc6rYQqnOR3TqskmEDB/QZVzc9uUNsIxiHKahKjbO28v0x5CmU77kpFJcErHFZ3XA6LZjNo7TYLnIDXTLERoGTdI3LpVj9mf38OWbAo2nWQln2zHAT5psr9yqVynLXZPyRhruqo5Iau19KYPMzMZF9u38kh2Y4tTOFWCXcF5k6hrnOyRIdhMTl16dMOXZzHbmPcGEasJblWxMz/9lQRMcA6X/Dhb19X8TU4VumeB9mGgvCSZfcO91+IquV1Wgq5tJkG5EQMLhkXzlupWfgi2P0V9a+JkqZpPBN6XchQUoQkHQLW71L5eDLMPs+Qz13FqP9P3C6zNlSoEO3QF50XTAS8ePeuZmZEm6KsxT/2dtLFVsll10GpjFgRbUphKNZv6aPavJ/s4cDxlEgopZ5fzDHk9PQQLVh2Sdl1lDQSnaJhDuOKT0/5MeWSR/3dLx0cB1vds7+zS1pDsrCqgrk0ssSI4SlQCqOZzwy2rxwZNJkx0sSc68TK7knPYQzRwrQRbRdc6+Oq+t6kDX2RTO6SL01EeT11JULbOKao0S79SccfK03cowvMne3n3va3mKNOPO2d5OUN1uatzlJqac0KK86TFewCkKC8z7H3nXMWhe+zlbgK2hmR5JN3V8d6+1y0uZeQuum0sZvaXt4dVAOmIhKJZcM7OiD27BMZOJtpDsJ2cG+Fahz2m720qS1JBLtlR+WFRprHMyvdmNGZZm5OUYmECiA7MO7DeXjTZy7vtAibHQ7AyKGZX+Gd7z4WhV4/wwyAbiJ+aO3jedUF0XmRjdTCkj0nsBbZ9ORxsEclEWnBxxtXcCvZHcjIsma31MRZjZ9F7qiQoRjekWgX42NOb00umO3ma9rNhV3Be9LrWoceEXlM5pZ1NWt+/Eij/NrNkKA8EL+VCUx7bIAcsK1s5fAh6UXctb7c1Ot14nBH+8zHbyf0V4y/FeIy5ziY1vYZZSlQlE011pKRh48Qk9Hz+0IQDwJdRmQKoIyqId2AlOTg/2gVhPpTupDGHBqO7lPWJBh46wS9Pr+SCaLrGia8NwaZgXZ6aoXwPRtqXqfU7spBMgXubkxClNTXTR2auw8dgL+32xbcfrwQDUu3c3cRo/Kp39ohoFiRzC/bVYLg25Bo6Ss1EOGAEdYbBVfe/in9aBlUJW0myPKJWJxyYBfuUlzx5idsQNB8kWjtNkhVWvlCWNEoSpe8tOuMb1ev9zviafkaP5cnu5hpVROTtoIcK2knS1TJW5WOZnrXYniP6Tj4EfU+3j98p1RKPpyuKmjxyGT/sOn137DWFvLxPZTOJ3OqiBotEXbBZF5zwVMom2FuPp12bhS0jmcBsjU5XccjEf8e35YcZOqsZtfP7JGmhgwcvMUYC0SZ9tCDMm7KFXBzUGhbLJRBc2Rq1EadV5Vi9LhKWtr+M3qsLM72y2xt/63hVJDR22OVcvjrRz4aZbUSsq6ZDkaJqBpbliEUx9rN9KD+IPDlC18n1QR/tZhw0lqdGyNZWe8nxoDDjzSHoLid8FSLA4shsDRQrKThzwl+Yy4ySTMJVCSarJlzrNVraD2ShzkZ2LYrUcFWomaRUpmpm/77bH990r1QkkD1hzcRNMfAR32kVy7uXNNKq2KODANcwWOpUm+qMBTF5vHL2C8u2s++Wkky7ibaOP/V6Pmmyd7gVHLJwVGyhYqBA85Kj1KAzSXkZcBrV6SyXom1lWqo+L7MybVRXj9XUmfIAk9UY/QqT0Ntruv386r2RYLUPcsNP3csnD8t2RuPPugkrGLM8Rc5gNyw4hlWFDvlt+Z6CHF2Y2V/5Q7zTQMtg8Bdsfd2q85O0D/BzcaoNonyJLTSxnqyqmiy8wZOnDS6U9wrBKjRcKo14q+cWW0dFn0q4oSgA6Sla8J4uzPQj3V5+/kTuaiLSLMVpe/mcC3ZJiLy361hRZFac4bxD9dAnVZUPg6vwUUZ0E4TjJ3WQI2VDjhPR1hOBbYmhFLtkeql+c9LZy/qeGdBV2V8JkkuOFy/KDdZVO84N5b0uaWJF6VrFkWjqZudrW3NyuVAimERwnslsaj+6cg1v2Kxtc0o/fOZZnHpWz+90Hc8PM4Use31tEm0z831RsnbVd51NQtAf+/vb2mZuTna82J4KfFma9dju0HOHUi1/G8IF80Xwsp1L6Vzm3qWGJEo4rPX6q3GVHYmkEdtQBcM/yQS965iEoJ/YTIIBlKVz51zFocl+XhB6XicH3qvDmOW4nOU5ryQCG5VqkSiZ+siRgL18WQz9RWyLJINGml3Gj0w6frqfUtOgB0ssS5scpjSUDVwrziMlLafczJCfVusOzumNdpFI2em3WRXV+wmTOLPX+328rpQp32zVY4M1GGdXcqGDNzmnx/bTFJDAzFM2MavhFZlF67sJK7OeV65cy5uWaaubFttHMhC7EDfRhdv1p97Z44OpN+GrvZXNowIBqZpqtqWyCp3fBbf8KOnRUHPEFifhm+8R6v2KTWLPG/1eXrtVBGvRrEG4f3TajfFK51jpewtKFURSCYTEyplf0Wq/YW+aHOCV27kT3r+EbStYKzBuQtrDdOrtlRFFsJTOshCmqMvQIFX/d2WLCRucsCYsIc1vj1NSkqsNZ0Mj8ikzv8IkzvjF7SIYQN7rwGs/d/i99oN9tG+K0fZ2Hu89E6VyIAEU/AqrfW/vnBzIe0ktkTe5iG2TZAXXr9FddJB+dhk/1XX6sX7KFFknwFwSV+3+28RmrjpkE821dnH1EAdFmd3OYQVSWXohgL5LKvLX/D6+fxk2/7JdOD7IRPvT4nu7nGdE9O8wLnWO+4HRB36vO8LLOEiEe1kbbZOx7SQzEOtpx9n+A1zfOf2rWW95P/JMGQ2mfvY3k4oMOUNac1PgxTBrwhpF3DX2WSoS1/tVrcSZvdnv4xXbTbDSF3dnV9mlPBBxYW/cOrmW68tnlplgsAQkgzxyd2OHL+ZhK44/EZwVIcjJsyCNwCzvH1QDllai+9Wot5xdmiWX5h2EVE7A4mRVXQz2234fL9tugr1zHf/8sgHrlZxD4Juj8aRonOnEzOD/eLhO1/BxgO1u7z3BUpAMBm/z0MU8fdVznaUV3UOMdljxkdOq8gCuYYqmloaV8V1JiCJmJXpkBD9hEozfneznJdtlgy3e+51X8BWrUT8h4wXe2xmDjMqDJYCJG6N4w2Qff2B1WC030bZ9c6eCsqHVqdfxvj7yct/JCwUjzxmX8k3Jwh/SJyoNM6lKVlYOT1jZgXkujoFkMmc8wHayykHC8ZQ8OBGoE+bP5MJTAn/aOV4uOKMPzEJv0xBsGnqmodc0BIIzLujQ74fL9GslZm1LJCyOhaUhGWTvao1u9QBvmU3tNd7bRFJUI7iAnAZdjPgyzzd3pcRFhvXqltOl8z/fR4Lr9JwI7+Jp7NBu4r2pKXY8KHtCTa/gX2mifQ7ODTObRllE6hATpAlOE3NM5KXe6PveZs7zfeESvRWwe1XdcQuwlA2rheku4ccnq/zn0NObpfXnVpN0msZb8zpPcFeBBrT1NAbTDsyYdataicEOuPvxbO3h8FYFNEsAlmdyZu/5cCfODaYZsq46LOW+iq1pzb0Hpn5Fq7Op/ceV6/jZZQ3EwpJJsoIi0VYO8JOzGT/mvbqkDC2W3MKhdsYQALPiSeYsxBQXH6KXc0PKgUQXNmzqvC6Jd+pqu5IztYdwwmrzfzGkSewYJ7y2m3BuMNVs3upHp1+1ClK5XwnMaxJ6C97zukNXcJ721FLvS4elbBQkol2/RrdyDT8dgn2/9/LeyRsEawvwLkqojBLdr2aclUmm4cS85qfrN5g6ZxfFwHtsjXOLfbhZ92akhEJb44wYeXGMMnN0c/umDiKs9Ei9z7zQV4aC63Ra17t/A8AXWU2/nVjKRhVclCVat59f25jZc6NxWyfriMwK0Y7ag0nleJUFUOaYS72xenYt6Nv1M6bO8cR4CtdvXMLjijTdlBvLFXyOrPK0zvMQs+w3kuOBgrodULUDLJkBeVYk7VCF0pCLzwSWYtHIsbDUJINBde44wLsOmz09wIe7FVaEBYtEs7aAQfG3hr/bCXdr5kExy3NThhzIaxICMyc9emVF/2t2GZdtGtHyohof3dellBDi3JK/9IsyWOqilky6tF9oPjUiTI+wZ3GqBt96qbD0JIOBaKdfw8d9z9P7aL/unbpO8kqVqm2+awcyWZPc3aYBVoc0pWOnXFNHF1KKzZnO6w9tJy8s84mb8fAkO5MagmjK6NXmt9lz6XVyBpTMTrOc9Wv3+8K9LHG6mTgpSAaZaLtwOsBdk71830Z03xYcf+t3aIX0oEIa6Dk1uab/WJ08TygzCKR8//yZEmrDWReiBYvm8Xpb2KnX1826TnCIw6Q7aaIwtXhjuedmOq22vZ0mK9NuxvT0UmR8CXHSkAyoxVtsHb9jf/hDL3tKH/gVYNY560ilnEJ5TG30bKg0pvqzFLObe4zD2jgL0WZuhR8NV+r3/m4tx9JOhPos5bSIn8iV9uYNSw05brZgd9bRkM4zOpk5/p79fGFZ5zFPKpJBEkAlzKCruXVytb0qyJ4aen6/E847utT/6kV+hLU0TqFZea4LUwFRTZUVyQwfNmzqxIsefpq74fC386gTYqflsg2d449Dz62ykhlMQ67mjhf7IDdfEHJw+b0CW6YVSi1OOpIV5LiQbB2/upcPd9ewPoMLQ+TdQPQTm3iHkxEMBWq5s8ZeA4alZtneiVBWEuQSTl2Y2dQ5nrrS632Hs0Nwr9pOKtug/dwSjXf5DmH0RWIt0mpoZ7ErKZNtLqSKRb8JwDbv0Ht3WDpP5HhQbKWygGLjCp7YwYvNeJ4X5yJBMILRI8zKUijXKMtmQXFRtlnumRxGZGbYqkv7fr/xjjvtZ844yB1wfLlcJfPkyCU8YuL4c4nTI4oSvkb2F420kl0iINrUT7TaT/mFyQF79TJH/O8TJCuwdXy7WufWNc447RQuBp6LuLCTHlrrCUWDCNHyX4ZZjnTmsK0MXCc5POASCUNUb6ZP3DWNL33AH/EhdqHjXR1UJ8cv5Xldx++HKEP0hnV1Kuxo+hqo7ya20k/5426Di7mQKbuXN3HxPkWyAtuFy6nddWTf+mzOOK3niTL3LcK+wYzHIs4x4wGdK/NPTTwqps0fotk/Y3waz8fleP/hKTecfiDtf35C2pqJtnEJ3+U7/YZ37Ag9AUc0K3WhSqtEJyZ0xmyqA4dk33HGtfzzshr8BfdJkhUYqETXF1XJLnCvuYKzLHJWJx7s4CF4dyoWI4GNaNzq4JZp5NOnH+DmY137RD3Ymk92GU/a4fQGGZe6Ln9L2SM0S9kQ+Fw0fvH1B/j53UkeLzXB4D5OshaVcDcjzkoe6j36/DqemxEXEjdj8WxrU911CU+diJ2IJzhxRjRmEp/qI++/zbj6oZn0JwPBvqxhOdJuu1IZ0OvX6Cz/u36NztbxtqvmaW3JYGy+74uftxVZIiPu27BdOCtEB1dfr6WU9O1u34gRI0aMGDFixIgRI0aMGDFixIgRI0aMGDFixIgRI0aMGDFixIgRI0aMGDFixIgRI0aMGDFixIgRI0aMGDFixIgRI0aMGDFixIgRI0aMGDFiu/D/AWkSkUEXCV5aAAAAAElFTkSuQmCC" alt="Resolve.AO">
+    <div>
+      <div class="wordmark">Resolve<span>.AO</span></div>
+      <div class="tag">Peça. Nós resolvemos.</div>
+    </div>
+  </div>
+  <nav class="tabs">
+    <button id="tab-cliente" class="active" onclick="switchView('cliente')">Pedir serviço</button>
+    <button id="tab-painel" onclick="switchView('painel')">Painel de tickets</button>
+  </nav>
+</header>
+
+<main>
+
+  <!-- ===================== CLIENT VIEW ===================== -->
+  <section id="view-cliente" class="view active">
+    <div class="card">
+
+      <div id="steps-dots" class="steps-dots">
+        <span class="active" id="dot-1"><i></i></span>
+        <span id="dot-2"><i></i></span>
+        <span id="dot-3"><i></i></span>
+        <span id="dot-4"><i></i></span>
+      </div>
+
+      <!-- STEP 1: category -->
+      <div class="step" id="step-1">
+        <div class="eyebrow">Serviços em Luanda</div>
+        <h1>Precisou? RESOLVE.</h1>
+        <p class="lead">Escolha a categoria do que precisa.</p>
+        <div class="cat-grid" id="cat-grid"></div>
+      </div>
+
+      <!-- STEP 2: service + description -->
+      <div class="step" id="step-2" style="display:none;">
+        <div class="eyebrow" id="step2-eyebrow">Serviço</div>
+        <h2 id="step2-title">Qual serviço precisa?</h2>
+        <p class="lead">Selecione a opção mais próxima e descreva o que precisa.</p>
+        <div class="field" id="service-field">
+          <label>Serviço</label>
+          <select id="input-service"></select>
+        </div>
+        <div class="field" id="find-field" style="display:none;">
+          <label>O que procura?</label>
+          <input type="text" id="input-find" placeholder="Ex.: Bateria para Hyundai Tucson 2018">
+        </div>
+        <div class="field">
+          <label>Descreva o problema ou pedido <span class="hint">(opcional, mas ajuda o profissional a preparar-se)</span></label>
+          <textarea id="input-desc" placeholder="Ex.: AC liga mas não refrigera. Split Samsung 12.000 BTU."></textarea>
+        </div>
+        <div class="actions">
+          <button class="btn btn-ghost" onclick="goStep(1)">Voltar</button>
+          <button class="btn btn-primary" onclick="goStep(3)">Continuar</button>
+        </div>
+      </div>
+
+      <!-- STEP 3: client data -->
+      <div class="step" id="step-3" style="display:none;">
+        <div class="eyebrow">Os seus dados</div>
+        <h2>Para onde enviamos o profissional?</h2>
+        <p class="lead">Estes dados ficam guardados na base de clientes RESOLVE.AO.</p>
+        <div class="row2">
+          <div class="field">
+            <label>Nome completo</label>
+            <input type="text" id="input-nome" placeholder="Carlos Manuel">
+          </div>
+          <div class="field">
+            <label>WhatsApp <span class="hint">(com código do país)</span></label>
+            <input type="tel" id="input-tel" placeholder="+244 9xx xxx xxx">
+          </div>
+        </div>
+        <div class="field">
+          <label>Localização / bairro</label>
+          <input type="text" id="input-local" placeholder="Talatona, Kilamba, Ingombota...">
+        </div>
+        <div class="field">
+          <label>Urgência</label>
+          <div class="chip-row" id="urg-chips">
+            <div class="chip" data-v="Hoje">Hoje</div>
+            <div class="chip" data-v="Amanhã">Amanhã</div>
+            <div class="chip" data-v="Esta semana">Esta semana</div>
+            <div class="chip" data-v="Sem pressa">Sem pressa</div>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label>Data preferida <span class="hint">(opcional)</span></label>
+            <input type="date" id="input-data">
+          </div>
+          <div class="field">
+            <label>Hora preferida <span class="hint">(opcional)</span></label>
+            <input type="time" id="input-hora">
+          </div>
+        </div>
+        <div class="actions">
+          <button class="btn btn-ghost" onclick="goStep(2)">Voltar</button>
+          <button class="btn btn-primary" onclick="goStep(4)">Rever pedido</button>
+        </div>
+      </div>
+
+      <!-- STEP 4: confirm -->
+      <div class="step" id="step-4" style="display:none;">
+        <div class="eyebrow">Confirmação</div>
+        <h2>Reveja o seu pedido</h2>
+        <p class="lead">Ao confirmar, abrimos um ticket e organizamos a solução.</p>
+        <div class="summary-box" id="summary-box"></div>
+        <div class="actions">
+          <button class="btn btn-ghost" onclick="goStep(3)">Voltar</button>
+          <button class="btn btn-primary" id="btn-submit" onclick="submitTicket()">Enviar pedido</button>
+        </div>
+      </div>
+
+      <!-- STEP 5: success -->
+      <div class="step" id="step-5" style="display:none;">
+        <div class="success">
+          <div class="eyebrow">Pedido registado</div>
+          <h2>O seu ticket foi criado</h2>
+          <div class="ticket-id" id="success-ticket-id">RSL-000000</div>
+          <p class="lead">A equipa RESOLVE vai procurar o profissional certo. Continue a conversa no WhatsApp para receber a confirmação do técnico, horário e orçamento — e enviar o comprovativo de pagamento quando o serviço for confirmado.</p>
+          <a class="btn btn-wa" id="wa-continue-link" href="#" target="_blank" style="text-decoration:none;display:inline-block;">Continuar no WhatsApp →</a>
+          <div>
+            <button class="btn btn-ghost" style="margin-top:16px;" onclick="resetForm()">Fazer novo pedido</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="note" id="storage-note"></div>
+  </section>
+
+  <!-- ===================== STAFF VIEW ===================== -->
+  <section id="view-painel" class="view">
+    <div class="board-head">
+      <div>
+        <div class="eyebrow">Painel interno</div>
+        <h2 style="margin:2px 0;">Tickets RESOLVE.AO</h2>
+      </div>
+      <div id="painel-count" style="font-size:13px;color:var(--text-muted);"></div>
+    </div>
+    <div class="board" id="board"></div>
+    <div class="note" id="storage-note-2"></div>
+  </section>
+
+</main>
+
+<footer>RESOLVE.AO • Peça. Nós resolvemos. • Contacto: +244 931 719 199</footer>
+
+<!-- ===================== TICKET MODAL ===================== -->
+<div class="modal-bg" id="modal-bg">
+  <div class="modal">
+    <button class="close" onclick="closeModal()">✕</button>
+    <div class="eyebrow" id="modal-tid">RSL-000000</div>
+    <h2 id="modal-svc">Serviço</h2>
+    <div id="modal-clientinfo" style="font-size:13px;color:var(--text-muted);margin-bottom:10px;"></div>
+    <p id="modal-desc" style="font-size:13.5px;"></p>
+    <hr class="divider">
+
+    <div class="field">
+      <label>Estado do ticket</label>
+      <div class="status-select-row" id="status-chips">
+        <div class="chip" data-v="novo">Novo</div>
+        <div class="chip" data-v="atendimento">Em atendimento</div>
+        <div class="chip" data-v="agendado">Agendado</div>
+        <div class="chip" data-v="concluido">Concluído</div>
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label>Técnico / prestador</label>
+        <input type="text" id="m-tech-nome" placeholder="Nome do técnico">
+      </div>
+      <div class="field">
+        <label>Avaliação</label>
+        <input type="text" id="m-tech-rating" placeholder="Ex.: 4,8 ⭐">
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Data confirmada</label>
+        <input type="date" id="m-data">
+      </div>
+      <div class="field">
+        <label>Hora confirmada</label>
+        <input type="time" id="m-hora">
+      </div>
+    </div>
+    <div class="field">
+      <label>Valor estimado (Kz)</label>
+      <input type="text" id="m-valor" placeholder="Ex.: 25.000–35.000 Kz">
+    </div>
+    <div class="field">
+      <label>Notas internas</label>
+      <textarea id="m-notas" placeholder="Observações da equipa..."></textarea>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Fechar</button>
+      <button class="btn btn-primary" onclick="saveModal()">Guardar</button>
+    </div>
+    <button class="btn btn-wa" style="width:100%;margin-top:10px;" onclick="sendWaConfirmation()">Enviar confirmação por WhatsApp ao cliente →</button>
+  </div>
+</div>
+
+<script>
+/* =================== BRAND / DATA =================== */
+let BUSINESS_PHONE = "244931719199"; // sem "+", formato wa.me (substituído por /api/config ao carregar)
+
+const CATEGORIES = [
+  {key:"casa", nome:"Casa", ic:"🏠", ds:"Eletricista, AC, canalização...",
+    servicos:["Eletricista","Canalizador","Montagem de móveis","Pintura","Limpeza residencial","Lavagem de sofá","Manutenção de AC","Instalação de AC","Pequenas reparações","Fechaduras","Eletrodomésticos"]},
+  {key:"empresa", nome:"Empresa", ic:"🏢", ds:"Manutenção, TI, limpeza...",
+    servicos:["Informática","Redes","Impressoras","Websites","Design","Manutenção geral","Limpeza","Ar condicionado","Eletricidade","Pequenas obras","Apoio administrativo"]},
+  {key:"pessoas", nome:"Pessoas", ic:"👷", ds:"Diaristas, babás, motoristas...",
+    servicos:["Diarista","Empregada doméstica","Babá","Cuidador","Motorista","Ajudante","Trabalhador temporário","Garçom","Promotor"]},
+  {key:"entrega", nome:"Entrega", ic:"🚚", ds:"Diligências e encomendas",
+    servicos:["Buscar encomendas","Entregar documentos","Compras urgentes","Recolher produtos","Farmácia","Pequenas entregas empresariais"]},
+  {key:"encontra", nome:"Encontrar", ic:"🔎", ds:"Procurar um produto específico",
+    servicos:[]},
+];
+
+const URGENCY_CLASS = {"Hoje":"urg-hoje","Amanhã":"urg-amanha","Esta semana":"urg-semana","Sem pressa":"urg-sem"};
+const STATUS_LABEL = {novo:"Novo",atendimento:"Em atendimento",agendado:"Agendado",concluido:"Concluído"};
+const STATUS_ORDER = ["novo","atendimento","agendado","concluido"];
+
+/* =================== DATA LAYER (API própria + SSE em tempo real) =================== */
+let allTickets = [];
+let renderCallbacks = [];
+let sseSource = null;
+let pollTimer = null;
+
+function notify(){ renderCallbacks.forEach(fn=>fn(allTickets)); }
+
+function setStorageNote(text){
+  document.getElementById("storage-note").textContent = text;
+  document.getElementById("storage-note-2").textContent = text;
+}
+
+async function initData(){
+  // configuração (nº de WhatsApp do negócio)
+  try{
+    const cfg = await fetch("/api/config").then(r=>r.json());
+    if(cfg && cfg.businessPhone) BUSINESS_PHONE = cfg.businessPhone;
+  }catch(e){ console.warn("Não foi possível carregar /api/config", e); }
+
+  // carregamento inicial
+  try{
+    allTickets = await fetch("/api/tickets").then(r=>r.json());
+    notify();
+    setStorageNote("Ligado ao servidor — os pedidos são partilhados por toda a equipa em tempo real.");
+  }catch(e){
+    console.error("Falha a carregar tickets do servidor", e);
+    setStorageNote("Não foi possível ligar ao servidor. Verifique se o servidor local está a correr (npm run dev).");
+  }
+
+  // atualizações em tempo real via Server-Sent Events, com fallback para polling
+  try{
+    sseSource = new EventSource("/api/stream");
+    sseSource.addEventListener("tickets", (ev)=>{
+      allTickets = JSON.parse(ev.data);
+      notify();
+    });
+    sseSource.onerror = ()=>{
+      if(!pollTimer){
+        pollTimer = setInterval(async ()=>{
+          try{ allTickets = await fetch("/api/tickets").then(r=>r.json()); notify(); }catch(e){}
+        }, 4000);
+      }
+    };
+  }catch(e){
+    pollTimer = setInterval(async ()=>{
+      try{ allTickets = await fetch("/api/tickets").then(r=>r.json()); notify(); }catch(e){}
+    }, 4000);
+  }
+}
+
+async function createTicket(data){
+  const res = await fetch("/api/tickets", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify(data)
+  });
+  if(!res.ok) throw new Error("Falha ao criar ticket");
+  return await res.json();
+}
+
+async function updateTicket(id, patch){
+  const res = await fetch("/api/tickets/" + encodeURIComponent(id), {
+    method:"PATCH",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify(patch)
+  });
+  if(!res.ok) throw new Error("Falha ao atualizar ticket");
+  return await res.json();
+}
+
+/* =================== VIEW SWITCH =================== */
+function switchView(name){
+  document.getElementById("view-cliente").classList.toggle("active", name==="cliente");
+  document.getElementById("view-painel").classList.toggle("active", name==="painel");
+  document.getElementById("tab-cliente").classList.toggle("active", name==="cliente");
+  document.getElementById("tab-painel").classList.toggle("active", name==="painel");
+}
+
+/* =================== CLIENT FORM LOGIC =================== */
+let formState = {categoryKey:null, categoryNome:null, servico:null, procura:null, desc:"", nome:"", tel:"", local:"", urgencia:null, data:"", hora:""};
+
+function renderCatGrid(){
+  const grid = document.getElementById("cat-grid");
+  grid.innerHTML = "";
+  CATEGORIES.forEach(c=>{
+    const el = document.createElement("div");
+    el.className = "cat-card" + (formState.categoryKey===c.key ? " selected" : "");
+    el.innerHTML = `<div class="ic">${c.ic}</div><div class="nm">${c.nome}</div><div class="ds">${c.ds}</div>`;
+    el.onclick = ()=>{
+      formState.categoryKey = c.key;
+      formState.categoryNome = c.nome;
+      formState.servico = null;
+      renderCatGrid();
+      goStep(2);
+    };
+    grid.appendChild(el);
+  });
+}
+
+function renderStep2(){
+  const cat = CATEGORIES.find(c=>c.key===formState.categoryKey);
+  if(!cat) return;
+  document.getElementById("step2-eyebrow").textContent = cat.nome;
+  const isFind = cat.key === "encontra";
+  document.getElementById("service-field").style.display = isFind ? "none" : "block";
+  document.getElementById("find-field").style.display = isFind ? "block" : "none";
+  document.getElementById("step2-title").textContent = isFind ? "O que está a precisar de encontrar?" : "Qual serviço precisa?";
+  if(!isFind){
+    const sel = document.getElementById("input-service");
+    sel.innerHTML = cat.servicos.map(s=>`<option value="${s}">${s}</option>`).join("");
+    formState.servico = cat.servicos[0];
+    sel.onchange = ()=>{ formState.servico = sel.value; };
+  }
+}
+
+document.getElementById("input-desc").addEventListener("input", e=>{ formState.desc = e.target.value; });
+document.getElementById("input-find").addEventListener("input", e=>{ formState.procura = e.target.value; });
+document.getElementById("input-nome").addEventListener("input", e=>{ formState.nome = e.target.value; });
+document.getElementById("input-tel").addEventListener("input", e=>{ formState.tel = e.target.value; });
+document.getElementById("input-local").addEventListener("input", e=>{ formState.local = e.target.value; });
+document.getElementById("input-data").addEventListener("input", e=>{ formState.data = e.target.value; });
+document.getElementById("input-hora").addEventListener("input", e=>{ formState.hora = e.target.value; });
+
+document.querySelectorAll("#urg-chips .chip").forEach(chip=>{
+  chip.onclick = ()=>{
+    document.querySelectorAll("#urg-chips .chip").forEach(c=>c.classList.remove("selected"));
+    chip.classList.add("selected");
+    formState.urgencia = chip.dataset.v;
+  };
+});
+
+function goStep(n){
+  for(let i=1;i<=5;i++){
+    document.getElementById("step-"+i).style.display = (i===n) ? "block" : "none";
+  }
+  for(let i=1;i<=4;i++){
+    const dot = document.getElementById("dot-"+i);
+    if(!dot) continue;
+    dot.classList.toggle("active", i===n);
+    dot.classList.toggle("done", i<n);
+  }
+  document.getElementById("steps-dots").style.display = (n<=4) ? "flex" : "none";
+  if(n===2) renderStep2();
+  if(n===4) renderSummary();
+}
+
+function renderSummary(){
+  const cat = CATEGORIES.find(c=>c.key===formState.categoryKey);
+  const svc = cat && cat.key==="encontra" ? (formState.procura||"—") : (formState.servico||"—");
+  const box = document.getElementById("summary-box");
+  box.innerHTML = `
+    <div class="row"><b>Categoria</b><span>${cat ? cat.nome : "—"}</span></div>
+    <div class="row"><b>Serviço</b><span>${svc}</span></div>
+    <div class="row"><b>Nome</b><span>${formState.nome||"—"}</span></div>
+    <div class="row"><b>WhatsApp</b><span>${formState.tel||"—"}</span></div>
+    <div class="row"><b>Localização</b><span>${formState.local||"—"}</span></div>
+    <div class="row"><b>Urgência</b><span>${formState.urgencia||"—"}</span></div>
+    <div class="row"><b>Data/Hora preferida</b><span>${(formState.data||"—")} ${formState.hora||""}</span></div>
+    <div class="row"><b>Descrição</b><span>${formState.desc||"—"}</span></div>
+  `;
+  const btn = document.getElementById("btn-submit");
+  btn.disabled = !(formState.nome && formState.tel && formState.categoryKey);
+}
+
+async function submitTicket(){
+  const cat = CATEGORIES.find(c=>c.key===formState.categoryKey);
+  const svc = cat && cat.key==="encontra" ? (formState.procura||"Produto a encontrar") : (formState.servico||"");
+  const payload = {
+    categoria: cat ? cat.nome : "",
+    categoriaKey: formState.categoryKey,
+    servico: svc,
+    descricao: formState.desc,
+    nome: formState.nome,
+    telefone: formState.tel,
+    localizacao: formState.local,
+    urgencia: formState.urgencia || "Sem pressa",
+    dataPreferida: formState.data,
+    horaPreferida: formState.hora,
+    tecnicoNome:"", tecnicoAvaliacao:"", dataConfirmada:"", horaConfirmada:"", valorEstimado:"", notas:""
+  };
+  const btn = document.getElementById("btn-submit");
+  btn.disabled = true; btn.textContent = "A enviar...";
+  const created = await createTicket(payload);
+  btn.disabled = false; btn.textContent = "Enviar pedido";
+
+  document.getElementById("success-ticket-id").textContent = created.ticketId;
+  const msg = `Olá RESOLVE.AO! Acabei de abrir o pedido ${created.ticketId}.%0A` +
+    `Categoria: ${payload.categoria}%0AServiço: ${payload.servico}%0ALocalização: ${payload.localizacao}%0AUrgência: ${payload.urgencia}%0A` +
+    (payload.descricao ? `Detalhes: ${payload.descricao}%0A` : "") +
+    `Nome: ${payload.nome}`;
+  document.getElementById("wa-continue-link").href = `https://wa.me/${BUSINESS_PHONE}?text=${msg}`;
+  goStep(5);
+}
+
+function resetForm(){
+  formState = {categoryKey:null, categoryNome:null, servico:null, procura:null, desc:"", nome:"", tel:"", local:"", urgencia:null, data:"", hora:""};
+  document.getElementById("input-desc").value = "";
+  document.getElementById("input-find").value = "";
+  document.getElementById("input-nome").value = "";
+  document.getElementById("input-tel").value = "";
+  document.getElementById("input-local").value = "";
+  document.getElementById("input-data").value = "";
+  document.getElementById("input-hora").value = "";
+  document.querySelectorAll("#urg-chips .chip").forEach(c=>c.classList.remove("selected"));
+  renderCatGrid();
+  goStep(1);
+}
+
+/* =================== STAFF BOARD =================== */
+let currentModalId = null;
+
+function renderBoard(tickets){
+  const board = document.getElementById("board");
+  board.innerHTML = "";
+  document.getElementById("painel-count").textContent = tickets.length + " ticket(s) no total";
+
+  STATUS_ORDER.forEach(statusKey=>{
+    const col = document.createElement("div");
+    col.className = "col";
+    const list = tickets.filter(t=>t.status===statusKey);
+    col.innerHTML = `<h3>${STATUS_LABEL[statusKey]} <em>${list.length}</em></h3>`;
+    if(list.length === 0){
+      col.innerHTML += `<div class="empty-col">Sem tickets</div>`;
+    } else {
+      list.forEach(t=>{
+        const urgClass = URGENCY_CLASS[t.urgencia] || "urg-sem";
+        const card = document.createElement("div");
+        card.className = "tcard";
+        card.onclick = ()=>openModal(t.id);
+        card.innerHTML = `
+          <div class="tid">${t.ticketId || t.id}</div>
+          <div class="tsvc">${t.servico || "—"}</div>
+          <div class="tcli">${t.nome || "—"} · ${t.localizacao || "—"}</div>
+          <span class="turg ${urgClass}">${t.urgencia || "—"}</span>
+        `;
+        col.appendChild(card);
+      });
+    }
+    board.appendChild(col);
+  });
+}
+
+function getTicketById(id){ return allTickets.find(t=>t.id===id); }
+
+function openModal(id){
+  currentModalId = id;
+  const t = getTicketById(id);
+  if(!t) return;
+  document.getElementById("modal-tid").textContent = t.ticketId || t.id;
+  document.getElementById("modal-svc").textContent = (t.categoria ? t.categoria+" — " : "") + (t.servico || "");
+  document.getElementById("modal-clientinfo").textContent = `${t.nome||"—"} · ${t.telefone||"—"} · ${t.localizacao||"—"}`;
+  document.getElementById("modal-desc").textContent = t.descricao || "Sem descrição adicional.";
+  document.getElementById("m-tech-nome").value = t.tecnicoNome || "";
+  document.getElementById("m-tech-rating").value = t.tecnicoAvaliacao || "";
+  document.getElementById("m-data").value = t.dataConfirmada || t.dataPreferida || "";
+  document.getElementById("m-hora").value = t.horaConfirmada || t.horaPreferida || "";
+  document.getElementById("m-valor").value = t.valorEstimado || "";
+  document.getElementById("m-notas").value = t.notas || "";
+  document.querySelectorAll("#status-chips .chip").forEach(c=>{
+    c.classList.toggle("selected", c.dataset.v === t.status);
+    c.onclick = ()=>{
+      document.querySelectorAll("#status-chips .chip").forEach(x=>x.classList.remove("selected"));
+      c.classList.add("selected");
+    };
+  });
+  document.getElementById("modal-bg").classList.add("open");
+}
+
+function closeModal(){
+  document.getElementById("modal-bg").classList.remove("open");
+  currentModalId = null;
+}
+
+async function saveModal(){
+  if(!currentModalId) return;
+  const statusEl = document.querySelector("#status-chips .chip.selected");
+  const patch = {
+    status: statusEl ? statusEl.dataset.v : "novo",
+    tecnicoNome: document.getElementById("m-tech-nome").value,
+    tecnicoAvaliacao: document.getElementById("m-tech-rating").value,
+    dataConfirmada: document.getElementById("m-data").value,
+    horaConfirmada: document.getElementById("m-hora").value,
+    valorEstimado: document.getElementById("m-valor").value,
+    notas: document.getElementById("m-notas").value,
+  };
+  await updateTicket(currentModalId, patch);
+  closeModal();
+}
+
+function sendWaConfirmation(){
+  const t = getTicketById(currentModalId);
+  if(!t) return;
+  const tel = document.getElementById("m-tech-nome").value ? t.telefone : t.telefone;
+  const phoneDigits = (t.telefone || "").replace(/[^0-9]/g,"");
+  const techName = document.getElementById("m-tech-nome").value || "a confirmar";
+  const rating = document.getElementById("m-tech-rating").value;
+  const data = document.getElementById("m-data").value || t.dataPreferida || "a combinar";
+  const hora = document.getElementById("m-hora").value || t.horaPreferida || "";
+  const valor = document.getElementById("m-valor").value || "a confirmar";
+  const msg = `Olá ${t.nome || ""}! Sobre o seu pedido ${t.ticketId || t.id} (${t.servico}):%0A` +
+    `Técnico: ${techName}${rating ? " ("+rating+")" : ""}%0A` +
+    `Data/Hora: ${data} ${hora}%0AValor estimado: ${valor}%0A%0A` +
+    `Pode confirmar? Após confirmação, envie aqui o comprovativo de pagamento. — RESOLVE.AO`;
+  window.open(`https://wa.me/${phoneDigits}?text=${msg}`, "_blank");
+}
+
+/* =================== INIT =================== */
+renderCatGrid();
+renderCallbacks.push(renderBoard);
+initData();
+</script>
+</body>
+</html>
